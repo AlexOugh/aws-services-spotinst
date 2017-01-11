@@ -48,7 +48,7 @@
     },
     "IAMRoleArn": {
       "Type": "String",
-      "Description": "Spot instance iam role arn",
+      "Description": "Spot instance  IAM Instance Profile ARN",
       "Default": ""
     },
     "NameTag": {

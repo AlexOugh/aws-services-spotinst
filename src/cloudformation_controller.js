@@ -3,11 +3,11 @@ var request = require('request');
 var querystring = require('querystring');
 var Q = require("q");
 
-var sts = require('../lib/aws_promise/sts');
-var s3 = require('../lib/aws_promise/s3bucket');
-var lambda = require('../lib/aws_promise/lambda');
-var collector = require('./lib/instance_attr_collector');
-var builder = require('./lib/spotinst_json_builder');
+var sts = require('aws-services-lib/aws_promise/sts');
+var s3 = require('aws-services-lib/aws_promise/s3bucket');
+var lambda = require('aws-services-lib/aws_promise/lambda');
+var collector = require('./instance_attr_collector');
+var builder = require('./spotinst_json_builder');
 
 var federatedCreds = null;
 
@@ -22,27 +22,25 @@ module.exports = {
     var instanceId = params.instanceId;
     var instanceRegion = params.instanceRegion;
 
-    var fs = require("fs");
-    var data = fs.readFileSync(__dirname + '/json/default.json', {encoding:'utf8'});
-    var data_json = JSON.parse(data);
-    console.log("data : " + data);
-    var region = data_json.region;
-    var bucketPrefix = data_json.bucketNamePrefix;
-    var templateFilePath = __dirname + '/' + data_json.templateFilePath;
-    var serviceTokenFunctionName = data_json.serviceTokenFunctionName;
+    //var region = process.env.REGION;
+    //var bucketPrefix = process.env.BUCKET_NAME_PREFIX;
+    var bucketName = process.env.BUCKET_NAME;
+    var templateFilePath = __dirname + '/' + process.env.TEMPLATE_FILE_PATH;
+    var serviceTokenFunctionArn = process.env.SERVICE_TOKEN_FUNCTION_ARN;
 
     var instanceAccount = accountRoleArn.split(":")[4];
     var account = federateRoleArn.split(":")[4];
-    var bucketName = bucketPrefix + account + '.' + region;
+    //var bucketName = bucketPrefix + account + '.' + region;
     // "arn:aws:lambda:us-east-1:089476987273:function:SSOProxyElastigroup-SpotinstLambdaFunction-15P3UDNPADGF4"
-    var serviceTokenArn = "arn:aws:lambda:" + region + ":" + account + ":function:" + serviceTokenFunctionName;
+    //var serviceTokenArn = "arn:aws:lambda:" + region + ":" + account + ":function:" + serviceTokenFunctionName;
+    var lambdaRegion = serviceTokenFunctionArn.split(":")[3];
 
     // first check if the target account has a permission to call the service token lambda and add a permission if it doesn't have yet
-    var input = { region: region, account: account, functionName: serviceTokenFunctionName, instanceAccount: instanceAccount };
+    var input = { region:lambdaRegion, functionArn: serviceTokenFunctionArn, instanceAccount: instanceAccount };
     return lambda.findAccountPolicy(input).then(data => {
       console.log(data);
       if (!data) {
-        input = { region:region, principal: instanceAccount, statementId: 'Id-' + instanceAccount, functionName: serviceTokenFunctionName };
+        input = { region:lambdaRegion, principal: instanceAccount, statementId: 'Id-' + instanceAccount, functionArn: serviceTokenFunctionArn };
         return lambda.addPermission(input).then(res => {
           console.log(res);
           return true;
@@ -69,7 +67,7 @@ module.exports = {
         var description = name;
         var keyPairName = '';
         var nameTag = name;
-        var cfJson = builder.buildCF(serviceTokenArn, spotinstAccessKey, instance, name, description, keyPairName, nameTag, templateFilePath);
+        var cfJson = builder.buildCF(serviceTokenFunctionArn, spotinstAccessKey, instance, name, description, keyPairName, nameTag, templateFilePath);
         console.log(JSON.stringify(cfJson, null, 2));
         return cfJson;
       });

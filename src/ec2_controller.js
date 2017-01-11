@@ -1,6 +1,6 @@
 
 var AWS = require('aws-sdk');
-var sts = require('../lib/aws_promise/sts');
+var sts = require('aws-services-lib/aws_promise/sts');
 
 var trustedAdvisorCheckInput = {
   checkId: 'Qch7DwouX1',
