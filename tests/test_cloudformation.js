@@ -1,9 +1,22 @@
 
 /**************
-export BUCKET_NAME=aws-services-spotinst-manual-bucket-1aer5h5ri57s9
+export BUCKET_NAME=aws-services-spotinst-bucket-1k8rxpeqwo5ku
 export TEMPLATE_FILE_PATH=./cloudformation.template.json
 export SERVICE_TOKEN_FUNCTION_ARN=arn:aws:lambda:us-east-1:089476987273:function:spotinst-builder
 ***************/
+
+const federatedCreds = {
+  "AccessKeyId": "",
+  "SecretAccessKey": "",
+  "SessionToken": ""
+};
+const body = {
+  federatedCreds: federatedCreds,
+  instanceAccount: "290093585298",
+  instanceId: "i-4b38ad45",
+  instanceRegion: "us-east-1",
+  spotinstAccessKey: ""
+};
 
 event = { resource: '/{proxy+}',
   path: '/cloudformation',
@@ -33,7 +46,7 @@ event = { resource: '/{proxy+}',
      resourcePath: '/{proxy+}',
      httpMethod: 'GET',
      apiId: 'ev4z0gjdi3' },
-  body: "{  \"federateRoleArn\": \"arn:aws:iam::089476987273:role/federate\",  \"accountRoleArn\": \"arn:aws:iam::290093585298:role/sgas_dev_admin\",  \"externalId\": \"ccb6cfce-057c-4fbc-84b9-1ee10e8b6560\",  \"instanceId\": \"i-4b38ad45\",  \"instanceRegion\": \"us-east-1\",  \"spotinstAccessKey\": \"03a84d51e5b01d2c549e77f049e70faf9bed52fc7ea45ad21dded0bddde16f78\"\n}",
+  body: JSON.stringify(body),
   isBase64Encoded: false
 }
 

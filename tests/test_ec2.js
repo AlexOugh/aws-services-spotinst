@@ -1,3 +1,14 @@
+
+const federatedCreds = {
+  "AccessKeyId": "",
+  "SecretAccessKey": "",
+  "SessionToken": ""
+};
+const body = {
+  federatedCreds: federatedCreds,
+  region: "us-east-1"
+};
+
 event = { resource: '/{proxy+}',
   path: '/ec2',
   httpMethod: 'POST',
@@ -26,7 +37,7 @@ event = { resource: '/{proxy+}',
      resourcePath: '/{proxy+}',
      httpMethod: 'GET',
      apiId: 'ev4z0gjdi3' },
-  body: "{   \"federateRoleArn\": \"arn:aws:iam::089476987273:role/federate\",\n    \"accountRoleArn\": \"arn:aws:iam::290093585298:role/sgas_dev_admin\",\n    \"externalId\": \"ccb6cfce-057c-4fbc-84b9-1ee10e8b6560\",\n    \"region\": \"us-east-1\"\n}",
+  body: JSON.stringify(body),
   isBase64Encoded: false
 }
 
