@@ -1,6 +1,5 @@
 
 var AWS = require('aws-sdk');
-var sts = require('aws-services-lib/aws_promise/sts');
 
 var trustedAdvisorCheckInput = {
   checkId: 'Qch7DwouX1',
@@ -11,45 +10,34 @@ module.exports = {
 
   post: function(params) {
 
-    var federateRoleArn = params.federateRoleArn;
-    var accountRoleArn = params.accountRoleArn;
-    var externalId = params.externalId;
+    var federatedCreds = new AWS.Credentials({
+      accessKeyId: params.federatedCreds.AccessKeyId,
+      secretAccessKey: params.federatedCreds.SecretAccessKey,
+      sessionToken: params.federatedCreds.SessionToken
+    });
     var main_region = params.region;
-
-    var support = null;
-    var autoscaling = null;
 
     var instanceDict = {};
     var regionDict = {};
-    var credentials = null;
 
-    var input = {
-      federateRoleArn: federateRoleArn,
-      accountRoleArn: accountRoleArn,
-      externalId: externalId
-    }
-    return sts.assumeRole(input).then(function(creds) {
-      credentials = creds;
-      support = new AWS.Support({credentials: creds, region: main_region});
-      autoscaling = new AWS.AutoScaling({credentials: creds, region: main_region});
-    }).then(function() {
-      var params = trustedAdvisorCheckInput;
-      return support.describeTrustedAdvisorCheckResult(params).promise().then(function(data) {
-        console.log(JSON.stringify(data, null, 2));
-        var instanceIds = [];
-        data.result.flaggedResources.forEach(function(resource) {
-          instanceIds.push(resource.metadata[1]);
-          instanceDict[resource.metadata[1]] = resource;
-          if (regionDict[resource.region]) {
-            regionDict[resource.region].push(resource.metadata[1]);
-          }
-          else {
-            regionDict[resource.region] = [resource.metadata[1]];
-          }
-        });
-        console.log(regionDict);
-        return instanceIds;
+    var support = new AWS.Support({credentials: federatedCreds, region: main_region});
+    var autoscaling = new AWS.AutoScaling({credentials: federatedCreds, region: main_region});
+    var params = trustedAdvisorCheckInput;
+    return support.describeTrustedAdvisorCheckResult(params).promise().then(function(data) {
+      console.log(JSON.stringify(data, null, 2));
+      var instanceIds = [];
+      data.result.flaggedResources.forEach(function(resource) {
+        instanceIds.push(resource.metadata[1]);
+        instanceDict[resource.metadata[1]] = resource;
+        if (regionDict[resource.region]) {
+          regionDict[resource.region].push(resource.metadata[1]);
+        }
+        else {
+          regionDict[resource.region] = [resource.metadata[1]];
+        }
       });
+      console.log(regionDict);
+      return instanceIds;
     }).then(function(instanceIds) {
       if (!instanceIds || instanceIds.length == 0) {
         return new Promise(function(resolve, reject) {
@@ -59,7 +47,7 @@ module.exports = {
       // find ec2 instance details for each region
       var promises = [];
       Object.keys(regionDict).forEach(function(region) {
-        var ec2 = new AWS.EC2({credentials: credentials, region: region});
+        var ec2 = new AWS.EC2({credentials: federatedCreds, region: region});
         promises.push(ec2.describeInstances({InstanceIds: regionDict[region]}).promise());
       });
       return Promise.all(promises).then(function(reservationsArray) {

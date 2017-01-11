@@ -3,7 +3,7 @@ var request = require('request');
 var querystring = require('querystring');
 var Q = require("q");
 
-var sts = require('aws-services-lib/aws_promise/sts');
+var AWS = require('aws-sdk');
 var s3 = require('aws-services-lib/aws_promise/s3bucket');
 var lambda = require('aws-services-lib/aws_promise/lambda');
 var collector = require('./instance_attr_collector');
@@ -15,24 +15,20 @@ module.exports = {
 
   post: function(params) {
 
-    var federateRoleArn = params.federateRoleArn;
-    var accountRoleArn = params.accountRoleArn;
-    var externalId = params.externalId;
+    federatedCreds = new AWS.Credentials({
+      accessKeyId: params.federatedCreds.AccessKeyId,
+      secretAccessKey: params.federatedCreds.SecretAccessKey,
+      sessionToken: params.federatedCreds.SessionToken
+    });
     var spotinstAccessKey = params.spotinstAccessKey;
+    var instanceAccount = params.instanceAccount;
     var instanceId = params.instanceId;
     var instanceRegion = params.instanceRegion;
 
-    //var region = process.env.REGION;
-    //var bucketPrefix = process.env.BUCKET_NAME_PREFIX;
     var bucketName = process.env.BUCKET_NAME;
     var templateFilePath = __dirname + '/' + process.env.TEMPLATE_FILE_PATH;
     var serviceTokenFunctionArn = process.env.SERVICE_TOKEN_FUNCTION_ARN;
 
-    var instanceAccount = accountRoleArn.split(":")[4];
-    var account = federateRoleArn.split(":")[4];
-    //var bucketName = bucketPrefix + account + '.' + region;
-    // "arn:aws:lambda:us-east-1:089476987273:function:SSOProxyElastigroup-SpotinstLambdaFunction-15P3UDNPADGF4"
-    //var serviceTokenArn = "arn:aws:lambda:" + region + ":" + account + ":function:" + serviceTokenFunctionName;
     var lambdaRegion = serviceTokenFunctionArn.split(":")[3];
 
     // first check if the target account has a permission to call the service token lambda and add a permission if it doesn't have yet
@@ -48,19 +44,8 @@ module.exports = {
       }
       else return data;
     }).then(data => {
-      // federate to the target account
-      input = {
-        federateRoleArn: federateRoleArn,
-        accountRoleArn: accountRoleArn,
-        externalId: externalId
-      }
-      return sts.assumeRole(input).then(creds => {
-        return creds;
-      });
-    }).then(creds => {
-      federatedCreds = creds;
       // get the attributes of the given instance
-      return collector.getEC2InstanceAttrs(instanceId, instanceRegion, creds).then(instance => {
+      return collector.getEC2InstanceAttrs(instanceId, instanceRegion, federatedCreds).then(instance => {
         console.log(JSON.stringify(instance, null, 2));
         // now build the cloudformation template
         var name = instance.InstanceId + '-elastigroup';
