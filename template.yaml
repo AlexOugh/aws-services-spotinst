@@ -101,7 +101,7 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref Bucket
-          TEMPLATE_FILE_PATH: "./cloudformation.template.json"
+          TEMPLATE_FILE_PATH: "cloudformation.template.json"
           SERVICE_TOKEN_FUNCTION_ARN: !Ref SpotInstBuildLambaFunctionArn
       Events:
         ProxyApiGreedy:
