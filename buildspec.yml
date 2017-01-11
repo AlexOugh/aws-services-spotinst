@@ -1,0 +1,18 @@
+version: 0.1
+phases:
+  install:
+    commands:
+      - npm install time
+      - npm install
+      - cd src; npm install; cd ..
+      - node run_zip
+      - aws s3 cp spotinst.zip s3://sgas.sam.aws-services-spotinst
+      - aws s3 cp swagger.yaml s3://sgas.sam.aws-services-spotinst
+      - aws cloudformation package
+         --template-file template.yaml
+         --s3-bucket sgas.sam.aws-services-spotinst
+         --output-template-file samTemplate.yaml
+artifacts:
+  type: zip
+  files:
+    - samTemplate.yaml

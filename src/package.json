@@ -1,0 +1,19 @@
+{
+  "name": "billing",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.6.7",
+    "lodash": "^4.15.0",
+    "q": "^1.4.1",
+    "request": "^2.74.0",
+    "request-promise": "^4.1.1",
+    "aws-services-lib": "https://github.com/AlexOugh/aws-services-lib.git#develop"
+  }
+}

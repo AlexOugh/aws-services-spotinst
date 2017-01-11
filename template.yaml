@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Gateway and Lambda functions along with related resources for SpotInst Interface.
+
+Parameters:
+  SpotInstBuildLambaFunctionArn:
+    Type: String
+    Description: ARN Lambda Function that buids spot instances
+
+Resources:
+
+  EncryptionDecryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Encryption and Decryption key for Lambda"
+      KeyPolicy:
+        Id: "LambdaEncDec"
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "Allow administration of the key"
+            Effect: "Allow"
+            Action:
+              - "kms:*"
+            Principal:
+              AWS: !Ref AWS::AccountId
+            Resource: '*'
+          -
+            Sid: "Allow Encryption Service to use this key"
+            Effect: "Allow"
+            Action:
+              - "kms:Encrypt"
+            Principal:
+              AWS: !GetAtt LambdaFunctionIAMRole.Arn
+            Resource: '*'
+          -
+            Sid: "Allow Decryption Service to use this key"
+            Effect: "Allow"
+            Action:
+              - "kms:Decrypt"
+            Principal:
+              AWS: !GetAtt LambdaFunctionIAMRole.Arn
+            Resource: '*'
+
+  LambdaFunctionIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action:
+              - "sts:AssumeRole"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Policies:
+        -
+          PolicyName: "InlinePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "ec2:*"
+                  - "autoscaling:*"
+                  - "cloudwatch:*"
+                  - "support:*"
+                  - "s3:*"
+                  - "lambda:*"
+                  - "iam:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      DefinitionUri: s3://sgas.sam.aws-services-spotinst/swagger.yaml
+      StageName: Prod
+      Variables:
+        LambdaFunctionName: !Ref LambdaFunction
+
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs4.3
+      CodeUri: s3://sgas.sam.aws-services-spotinst/spotinst.zip
+      Role: !GetAtt LambdaFunctionIAMRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref Bucket
+          TEMPLATE_FILE_PATH: "./cloudformation.template.json"
+          SERVICE_TOKEN_FUNCTION_ARN: !Ref SpotInstBuildLambaFunctionArn
+      Events:
+        ProxyApiGreedy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /{proxy+}
+            Method: ANY
+
+  Bucket:
+    Type: AWS::S3::Bucket
