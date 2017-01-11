@@ -1,6 +1,7 @@
 import React from 'react';
 import Ec2List from '../components/Ec2List';
 import API from '../utilities/api';
+import SpotInstKeys from '../spotinst/keys';
 
 class Ec2ListContainer extends React.Component {
   constructor(props) {
@@ -11,16 +12,7 @@ class Ec2ListContainer extends React.Component {
       ],
       accountRoleArns: {},
       externalIds: {},
-      spotinstAccessKeys: {
-        "089476987273": "",
-        "290093585298": "",
-        "876224653878": "",
-        "054649790173": "",
-        "546276914724": "",
-        "607481993316": "",
-        "714270045944": "",
-        "897824193103": ""
-      },
+      spotinstAccessKeys: {},
       federateRoleArn: '',
       account: ''
     };
@@ -28,6 +20,7 @@ class Ec2ListContainer extends React.Component {
 
   componentDidMount() {
     const self = this;
+    self.setState({spotinstAccessKeys:SpotInstKeys});
     self.find_accounts();
   }
 
@@ -71,35 +64,39 @@ class Ec2ListContainer extends React.Component {
   handleSubmit(e) {
     if(e) e.preventDefault();
     const self = this;
-    const accountRoleArn = this.state.accountRoleArns[this.state.account];
+    const federateAccount = this.state.federateRoleArn.split(":")[4];
+    const federateRole = this.state.federateRoleArn.split("/")[1];
+    const account = this.state.accountRoleArns[this.state.account].split(":")[4];
+    const accountRole = this.state.accountRoleArns[this.state.account].split("/")[1];
     const externalId = this.state.externalIds[this.state.account];
-    //const url = API.get_api_url() + '/ec2?federateRoleArn=' + this.state.federateRoleArn + '&accountRoleArn=' + accountRoleArn + '&externalId=' + externalId ;
-    //const method = 'GET';
-    //const params = {};
-    const url = API.get_api_url() + '/spotinst/ec2';
-    const method = 'POST';
-    const params = {
-      "federateRoleArn": this.state.federateRoleArn,
-      "accountRoleArn": accountRoleArn,
-      "externalId": externalId,
-      "region": "us-east-1"
-    };
-    API.send_request(url, method, params, 'refresh_token').
-    then(function(data) {
-      if (data.errorMessage) {
-        alert(JSON.stringify(data));
-        return;
-      }
-      data.forEach(function(instance) {
-        instance.account = self.state.account;
-        if (instance.autoScalingGroup) {
-          instance.loadBalancerNames = instance.autoScalingGroup.LoadBalancerNames.toString().replace(',', ', ');
+    API.get_federated_creds(federateAccount, account, federateRole, accountRole, externalId).
+    then(function(federatedCreds) {
+      const url = API.get_api_url() + '/ec2';
+      const method = 'POST';
+      const params = {
+        "federatedCreds": federatedCreds.body.Credentials,
+        "region": "us-east-1"
+      };
+      API.send_request(url, method, params, 'refresh_token').
+      then(function(data) {
+        if (data.errorMessage) {
+          alert(JSON.stringify(data));
+          return;
         }
-        else {
-          instance.loadBalancerNames = null;
-        }
+        data.forEach(function(instance) {
+          instance.account = self.state.account;
+          if (instance.autoScalingGroup) {
+            instance.loadBalancerNames = instance.autoScalingGroup.LoadBalancerNames.toString().replace(',', ', ');
+          }
+          else {
+            instance.loadBalancerNames = null;
+          }
+        });
+        self.setState({data: data});
+      })
+      .catch(function(err) {
+        alert(err);
       });
-      self.setState({data: data});
     })
     .catch(function(err) {
       alert(err);
@@ -110,60 +107,37 @@ class Ec2ListContainer extends React.Component {
     e.preventDefault();
     const instanceId = e.target.value;
     const region = e.target.name;
-    const accountRoleArn = this.state.accountRoleArns[this.state.account];
+    const federateAccount = this.state.federateRoleArn.split(":")[4];
+    const federateRole = this.state.federateRoleArn.split("/")[1];
+    const account = this.state.accountRoleArns[this.state.account].split(":")[4];
+    const accountRole = this.state.accountRoleArns[this.state.account].split("/")[1];
     const externalId = this.state.externalIds[this.state.account];
     const spotinstAccessKey = this.state.spotinstAccessKeys[this.state.account];
-    const params = {
-      federateRoleArn: this.state.federateRoleArn,
-      accountRoleArn: accountRoleArn,
-      externalId: externalId,
-      instanceId: instanceId,
-      region: region,
-      spotinstAccessKey: spotinstAccessKey
-    };
-    const self = this;
-    const url = API.get_api_url() + '/spotinst/cloudformation';
-    const method = 'POST';
-    API.send_request(url, method, params, 'refresh_token').
-    then(function(data) {
-      if (data.errorMessage) {
-        alert(JSON.stringify(data));
-        return;
-      }
-      //self.setState({output: JSON.stringify(data, null, 2)});
-      alert(data.consoleUrl);
-      window.open(data.consoleUrl, '_aws');
-    })
-    .catch(function(err) {
-      alert(err);
-    });
-    // this.setState({account: '', role: ''});
-  }
-
-  handlePrice(e) {
-    if(e) e.preventDefault();
-    const self = this;
-    const accountRoleArn = this.state.accountRoleArns[this.state.account];
-    const externalId = this.state.externalIds[this.state.account];
-    const url = API.get_price_api_url() + '';
-    const method = 'GET';
-    const params = {};
-    API.send_request(url, method, params, 'refresh_token').
-    then(function(data) {
-      if (data.errorMessage) {
-        alert(JSON.stringify(data));
-        return;
-      }
-      data.forEach(function(instance) {
-        instance.account = self.state.account;
-        if (instance.autoScalingGroup) {
-          instance.loadBalancerNames = instance.autoScalingGroup.LoadBalancerNames.toString().replace(',', ', ');
+    API.get_federated_creds(federateAccount, account, federateRole, accountRole, externalId).
+    then(function(federatedCreds) {
+      const params = {
+        federatedCreds: federatedCreds.body.Credentials,
+        instanceAccount: account,
+        instanceId: instanceId,
+        instanceRegion: region,
+        spotinstAccessKey: spotinstAccessKey
+      };
+      const self = this;
+      const url = API.get_api_url() + '/cloudformation';
+      const method = 'POST';
+      API.send_request(url, method, params, 'refresh_token').
+      then(function(data) {
+        if (data.errorMessage) {
+          alert(JSON.stringify(data));
+          return;
         }
-        else {
-          instance.loadBalancerNames = null;
-        }
+        //self.setState({output: JSON.stringify(data, null, 2)});
+        //alert(data.consoleUrl);
+        window.open(data.consoleUrl, '_aws');
+      })
+      .catch(function(err) {
+        alert(err);
       });
-      self.setState({data: data});
     })
     .catch(function(err) {
       alert(err);
@@ -174,8 +148,7 @@ class Ec2ListContainer extends React.Component {
     let changeHandler = this.handleChange.bind(this);
     let submitHandler = this.handleSubmit.bind(this);
     let cloudformationHandler = this.handleCloudformation.bind(this);
-    let priceHandler = this.handlePrice.bind(this);
-    return (<Ec2List data={this.state.data} accounts={this.state.accounts} changeHandler={changeHandler} submitHandler={submitHandler} cloudformationHandler={cloudformationHandler} priceHandler={priceHandler}/>);
+    return (<Ec2List data={this.state.data} accounts={this.state.accounts} changeHandler={changeHandler} submitHandler={submitHandler} cloudformationHandler={cloudformationHandler}/>);
   }
 }
 
