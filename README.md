@@ -12,8 +12,6 @@ A Interface to convert EC2 instances and/or Autoscaling groups to Spot Instances
 
 ## How To Update Lambda Function Codes
 
-    $ ./run_update_codes
-
 
 ## How To Test Lambda Functions
 
