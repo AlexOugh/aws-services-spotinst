@@ -282,7 +282,7 @@ module.exports = {
   },
 
   getSubnetDetails: function(instance, region, creds) {
-    var subnets = instance.NetworkInterfaces.map(networkInterface => networkInterface.subnetId);
+    var subnets = instance.NetworkInterfaces.map(networkInterface => networkInterface.SubnetId);
     if (subnets.length == 0) {
       if (instance.AutoScalingGroups.length == 0) {
         subnets.push(instance.SubnetId);

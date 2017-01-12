@@ -2,7 +2,7 @@
 var AWS = require('aws-sdk');
 
 var trustedAdvisorCheckInput = {
-  checkId: 'Qch7DwouX1',
+  checkId: 'Qch7DwouX1',  // Checks the Amazon EC2 instances that were running at any time during the last 14 days and alerts you if the daily CPU utilization was 10% or less and network I/O was 5 MB or less on 4 or more days
   language: 'en'
 };
 
